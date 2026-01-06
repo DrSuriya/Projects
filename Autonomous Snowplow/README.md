@@ -24,17 +24,17 @@ Both demonstrations were conducted using the RTOS implementation of the firmware
 
 | Metric | Attempt 1 | Attempt 2 |
 | :--- | :--- | :--- |
-| **Blocks Cleared** | **32 / 100** | **41 / 100** |
+| **Blocks Cleared** | **32 / 100** | **20 / 100** |
 | **Obstacle Collisions** | 2 | 5 |
-| **Configuration** | High sensitivity for obstacle detection (Longer detection distance). | Reduced detection distance (Lower interrupt threshold). |
-| **Analysis** | **High Safety / Low Efficiency:** The robot triggered avoidance frequently (false positives), which reduced clearing time. It successfully avoided obstacles but missed blocks near the perimeter. | **Higher Efficiency / Lower Safety:** Reducing sensitivity allowed the robot to clear blocks closer to the obstacles. However, at higher speeds, the sensors occasionally failed to register the obstacle in time, leading to collisions. |
+| **Configuration** | Higher Ultrasonic detection distance. | Reduced Ultrasonic detection distance. |
+
+**Discussion:** 
+* **Line Sensor Variance:** While the line sensors functioned as intended, they sometimes suffered from false positives due to the low contrast of the arena's more grey floor (as opposed to the white test surfaces). Additionally, despite identical mounting heights, the two sensors showed significant variance, outputting different analog values for the same surface. We prioritized not leaving the boundaries and so the threshold set was low, resulting in the right sensor which was consistently higher to trigger the turning algorithm.
+* **Ultrasonic Signal Noise:** The ultrasonic sensors were the main source of instability. They were prone to false positives, being the primary reason for Attempt 2 going poorly. When we reduced the minimum detection distance to try and clear blocks closer to obstacles, the sensors began triggering on background noise. This caused the robot to frequently enter "avoidance mode" loops even when no obstacle was present, it would also sometimes not even detect something right in front of it resulting it clipping the obstacles more often.
+* **Pathing Constraints:** The motor control logic was simplified to execute unidirectional turns (always turning right) when an obstacle or line was detected. While this kept the logic simple and robust, it limited the robot's pathing efficiency. It often took longer to navigate out of corners compared to a bi-directional turning algorithm.
 
 ## 4. System Architecture
 The final version utilizes **FreeRTOS** to manage three concurrent tasks:
 1.  **SensorTask (High Priority):** Polls Ultrasonic and Line sensors at 50Hz; updates a shared data structure protected by a Mutex to prevent race conditions.
 2.  **MotorTask (Medium Priority):** Consumes sensor data to drive the H-Bridge; executes avoidance maneuvers when safety thresholds are breached.
 3.  **WatchdogTask (Highest Priority):** A supervisor task that monitors system health. It "kicks" the hardware watchdog only if all other tasks report their active status bitmasks, ensuring the system auto-resets if a task hangs.
-
-
-
-
